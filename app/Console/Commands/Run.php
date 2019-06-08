@@ -43,9 +43,6 @@ class Run extends Command
 
 
         $this->info('Hi!');
-        //Redis::connection('redis');
-
-
 
         while (1)
         {
@@ -66,18 +63,25 @@ class Run extends Command
         while(true)
         {
 
-            // Check if my process generator
-            $g=Redis::get('generator');
 
+            // Become generator if generator not present
+            /* Синхронно, на стороне редис сервера посмотреть является ли текущий процесс генерпатором.
+            Если да, то обновить ттл. Если  нет - попытаться стать генерератором. Но команда завершиться результатом NULL,
+            если генератор уже есть (флаг NX). На редисе, в данный момент времени, может выполняться только один скрипт
+                https://redis.io/commands/eval
+            Пока скрипт выполняется, скрипты и команды от другого процесса буду в ожидании
+            */
 
+            $r=Redis::eval('if redis.call("get",KEYS[1]) == ARGV[1] then
+		return redis.call("SET", KEYS[1], ARGV[1],  "PX", ARGV[2])
+else
+		return redis.call("SET", KEYS[1], ARGV[1],  "NX", "PX", ARGV[2])
+end',2, 'generator', null, $generatorKey, $generatorTimeout*1000);
 
-            if($g && $g!=$generatorKey) {
-                $this->warn("Another active generator found! Switching to worker mode.");
+            if(!$r) {
+                $this->info("Found other generator. Switching to worker mode.");
                 return;
             }
-
-            // Set generator and update TTL
-            Redis::setex('generator', $generatorTimeout, $generatorKey);
 
 
             // Generate number every app.interval seconds
