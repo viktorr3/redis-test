@@ -44,7 +44,7 @@ class Run extends Command
 
         $this->info('Hi!');
 
-        while (1)
+        while (true)
         {
             if (!Redis::exists('generator')) $this->generator();
             else $this->worker();
@@ -103,7 +103,7 @@ end',2, 'generator', null, $generatorKey, $generatorTimeout*1000);
     {
 
         $wait=config('app.interval')+1;
-        while(1)
+        while(true)
         {
             list($record,$number)=Redis::blpop('numbers',$wait);
             if($record==null) {
